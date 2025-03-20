@@ -56,9 +56,7 @@ if ($action=="registro") {
         }
     }
 
-}elseif($action== "login") {
-    //Obtener y modificar la entrada JSON//
-    $input = json_decode(file_get_contents("php://input"), true);
+}elseif($action == "login") {
     if (!$input || !isset($input['Nombre']) || !isset($input['pass'])) {
         echo json_encode(['success' => false, 'message' => 'Datos inválidos']);
         exit;
@@ -68,19 +66,26 @@ if ($action=="registro") {
     $pass = htmlspecialchars($input['pass']);
 
     try {
-        //Preparar la consulta de seleccion para comprobar el usuario//
-        $stmt = $pdo->prepare("SELECT * FROM usuario WHERE Nombre= :Nombre");
+        // Obtener el usuario con su rol
+        $stmt = $pdo->prepare("
+        SELECT IdUsuario, Nombre, pass, Rol FROM usuario WHERE Nombre = :Nombre");
         $stmt->bindParam(':Nombre', $Nombre);
         $stmt->execute();
-        $user =$stmt->fetch(PDO::FETCH_ASSOC);
-        if ($user) {
-            $storedpass = $user['pass']; //Contraseña almacenada en la base de datos//
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            if (password_verify($pass, $storedpass)){
-                $_SESSION['user_id'] = $user['IdUsuario']; //ParaVerPerfil
-                $_SESSION['Nombre'] = $user['Nombre']; //ParaVerPerfil
-                //Contraseña valida y ya incriptada//
-                echo json_encode(['success' => true, 'message' => 'Inicio de sesión exitoso']);
+        if ($user) {
+            $storedpass = $user['pass']; // Contraseña almacenada en la BD
+
+            if (password_verify($pass, $storedpass)) {
+                $_SESSION['user_id'] = $user['IdUsuario'];
+                $_SESSION['Nombre'] = $user['Nombre'];
+                $_SESSION['Rol'] = $user['Rol'];
+
+                echo json_encode([
+                    'success' => true, 
+                    'message' => 'Inicio de sesión exitoso',
+                    'rol' => $user['Rol']
+                ]);
             } else {
                 echo json_encode(['success' => false, 'message' => 'Nombre o contraseña incorrectos']);
             }
@@ -89,38 +94,37 @@ if ($action=="registro") {
         }
     } catch (PDOException $e) {
         echo json_encode(['success' => false, 'message' => 'Error al iniciar sesión: ' . $e->getMessage()]);
-        } 
-    }elseif ($action == "getPerfil") {
-        // Verificar si el Nombre esta autenticado 
-        if (!isset($_SESSION['user_id'])) {
+    }
+} elseif ($action == "getPerfil") {
+    if (!isset($_SESSION['user_id'])) {
         echo json_encode(['success' => false, 'message' => 'Acción no válida']);
         exit;
-        } 
+    }
+
     $userId = $_SESSION['user_id'];
     try {
-        //Obtener los datos del ususario desde la base de datos 
         $stmt = $pdo->prepare("SELECT * FROM usuario WHERE IdUsuario = :id");
         $stmt->bindParam(':id', $userId);
         $stmt->execute();
-        $user = $stmt->fetch (PDO::FETCH_ASSOC);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
         if ($user) {
             echo json_encode([
-                'success' =>true,
-                'Nombre' => $user ['Nombre'],
-                'Apellido' => $user ['Apellido'],
-                'Email' => $user ['Email'],
-                'Telefono' => $user ['Telefono'],
-                'Rol' => $user ['Rol']
-
+                'success' => true,
+                'Nombre' => $user['Nombre'],
+                'Apellido' => $user['Apellido'],
+                'Email' => $user['Email'],
+                'Telefono' => $user['Telefono'],
+                'Rol' => $user['Rol']
             ]);
         } else {
             echo json_encode(['success' => false, 'message' => 'Usuario no encontrado']);
         }
     } catch (PDOException $e) {
-        echo json_encode(['success' => false, 'message' => 'Error al obtedner los datos del perfil:'. $e->getMessage()]);
+        echo json_encode(['success' => false, 'message' => 'Error al obtener los datos del perfil: ' . $e->getMessage()]);
     }
 } else {
-    echo json_encode(['success' => false, 'message' => 'Accion no valida']);
+    echo json_encode(['success' => false, 'message' => 'Acción no válida']);
 }
 ?>
 

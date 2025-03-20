@@ -1,45 +1,61 @@
 //const usuarioValido ="admin";
 //const passValida ="1234";
-let intentosRestantes =3;
+let intentosRestantes = 3; // Intentos máximos
 
-function verificarLogin(){
-    let action= "login";
-    let Nombre = document.getElementById("NuevoNombre").value;
-    let pass = document.getElementById("pass").value;
+function verificarLogin() {
+    let action = "login";
+    let Nombre = document.getElementById("NuevoNombre").value.trim();
+    let pass = document.getElementById("pass").value.trim();
     let mensaje = document.getElementById("message");
 
-    fetch("../php/usuario1.php",{
+    if (!Nombre || !pass) {
+        mensaje.style.color = "red";
+        mensaje.textContent = "Por favor, ingrese el usuario y la contraseña.";
+        return;
+    }
+
+    fetch("../php/usuario1.php", {
         method: "POST",
-        headers:{
+        headers: {
             "Content-Type": "application/json"
         },
-        body: JSON.stringify({action, Nombre, pass})
+        body: JSON.stringify({ action, Nombre, pass })
     })
     .then(response => response.json())
     .then(data => {
-            if(data.success){
-                mensaje.style.color = "green";
-                mensaje.textContent = "El inicio de sesion ha sido exitoso";
-                setTimeout(() => {
-                    window.location.href= "EjercicioListasDeProductos.html"
-                }, 2000); 
-            }else{
-                intentosRestantes--;
-                mensaje.style.color="Red";
-                mensaje.textContent="Error" + data.message;
-            }
+        if (data.success) {
+            mensaje.style.color = "green";
+            mensaje.textContent = "Inicio de sesion exitoso.";
+            
+            setTimeout(() => {
+                if (data.rol === "Comprador") {
+                    window.location.href = "../html/PaginaComprador.html"; // Página para compradores
+                } else {
+                    window.location.href = "../html/EjercicioListasDeProductos.html"; // Página para administradores y vendedores
+                }
+            }, 2000);
+        } else {
+            intentosRestantes--;
+            mensaje.style.color = "red";
+            mensaje.textContent = "Error: " + data.message;
 
-        if (intentosRestantes===0){
-            mensaje.textContent = "Cuenta Bloqueada. Vuelve a intentarlo mas tarde";
-            document.getElementById("form").elements["Nombre"].disabled = true;
-            document.getElementById("form").elements["pass"].disabled = true;
-            document.getElementById("form").elements["submitButton"].disabled = true;
+            if (intentosRestantes === 0) {
+                mensaje.textContent = "Cuenta bloqueada. Inténtelo más tarde.";
+                bloquearFormulario();
             }
+        }
     })
     .catch(error => {
-        console.error("Error:", error);
-        document.getElementById("message").textContent="Error al iniciar sesion"
+        console.error("Error en la petición:", error);
+        mensaje.style.color = "red";
+        mensaje.textContent = "Error al iniciar sesión. Inténtelo de nuevo.";
     });
+}
+
+function bloquearFormulario() {
+    document.getElementById("NuevoNombre").disabled = true;
+    document.getElementById("pass").disabled = true;
+    document.getElementById("submitButton").disabled = true;
 }
 
 
